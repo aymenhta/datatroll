@@ -14,3 +14,5 @@ Cargo.lock
 *.pdb
 
 src/main.rs
+data.csv
+freq_data.csv

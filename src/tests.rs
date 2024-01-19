@@ -33,7 +33,7 @@ fn test_data_loading() {
         vec![
             CellType::IntCell(3),
             CellType::StringCell("easy".to_string()),
-            CellType::StringCell("quintin".to_string()),
+            CellType::StringCell("scorces".to_string()),
             CellType::IntCell(2005),
             CellType::FloatCell(1.0),
             CellType::BooleanCell(false),
@@ -41,7 +41,7 @@ fn test_data_loading() {
         vec![
             CellType::IntCell(4),
             CellType::StringCell("hey".to_string()),
-            CellType::StringCell("quintin".to_string()),
+            CellType::StringCell("nolan".to_string()),
             CellType::IntCell(1997),
             CellType::FloatCell(4.7),
             CellType::BooleanCell(true),
@@ -73,6 +73,24 @@ fn test_mean() {
     sheet.load_data("data.csv").unwrap();
 
     assert_eq!(sheet.mean("review"), 3.72)
+}
+
+#[test]
+fn test_median() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("data.csv").unwrap();
+
+    assert_eq!(sheet.median("release date"), CellType::IntCell(2005))
+}
+
+#[test]
+fn test_mode() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("freq_data.csv").unwrap();
+
+    let got = sheet.mode("director");
+    let want = (CellType::StringCell("scorces".to_string()), 3);
+    assert_eq!(got, want)
 }
 
 #[test]
@@ -132,7 +150,7 @@ fn assert_sheet_row(got: &Vec<CellType>, want: &Vec<CellType>) {
 
     let review = match got[0] {
         CellType::FloatCell(f) => f,
-        _ => 0 as f64,
+        _ => 0_f64,
     };
 
     let want_id = match want[0] {
@@ -157,7 +175,7 @@ fn assert_sheet_row(got: &Vec<CellType>, want: &Vec<CellType>) {
 
     let want_review = match want[0] {
         CellType::FloatCell(f) => f,
-        _ => 0 as f64,
+        _ => 0_f64,
     };
 
     assert_eq!(id, want_id);
