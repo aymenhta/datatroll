@@ -9,7 +9,6 @@ pub enum CellType {
     FloatCell(f64),
 }
 
-// TODO: Variance, Co-Variance
 #[derive(Debug, Default)]
 pub struct Sheet {
     pub data: Vec<Vec<CellType>>,
@@ -73,6 +72,9 @@ impl Sheet {
         }
     }
 
+    /// Mean is usually represented by x-bar or x̄.
+    ///
+    /// X̄ = (Sum of values ÷ Number of values in data set)
     pub fn mean(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut sum = 0_f64;
@@ -81,13 +83,35 @@ impl Sheet {
             let val = match self.data[i][index] {
                 CellType::IntCell(x) => x as f64,
                 CellType::FloatCell(f) => f,
-                _ => return Err(Box::from("column value should be an i64 or a f64"))
+                _ => return Err(Box::from("column value should be an i64 or a f64")),
             };
 
             sum += val
         }
 
         Ok(sum / ((self.data.len() - 1) as f64))
+    }
+
+    /// The formula to find the variance is given by:
+    /// Var (X) = E[( X – μ)²] Where Var (X) is the variance
+    /// E denotes the expected value
+    /// X is the random variable and μ is the mean
+    pub fn variance(&self, column: &str) -> Result<f64, Box<dyn Error>> {
+        let mean = self.mean(column)?;
+
+        let index = self.get_col_index(column).expect("column doesn't exist");
+        let mut total_sum = 0_f64;
+        for i in 1..self.data.len() {
+            let val = match self.data[i][index] {
+                CellType::IntCell(x) => x as f64,
+                CellType::FloatCell(f) => f,
+                _ => return Err(Box::from("column value should be an i64 or a f64")),
+            };
+
+            total_sum += (val - mean).powf(2.0)
+        }
+
+        Ok(total_sum / (self.data.len() - 1) as f64)
     }
 
     /// median calculates the value in the middle of the provided column
@@ -221,9 +245,7 @@ impl Sheet {
 
     pub fn pretty_print(&self) {
         println!("[");
-        self.data.iter().for_each(|row| {
-            println!("\t<{:?}>,", row)
-        });
+        self.data.iter().for_each(|row| println!("\t<{:?}>,", row));
         println!("]");
     }
 

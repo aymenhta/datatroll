@@ -257,6 +257,16 @@ fn test_drop_col() {
     }
 }
 
+#[test]
+fn test_variance() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("data.csv").unwrap();
+
+    let got = sheet.variance("review").unwrap();
+    let want = 1.8456000000000004;
+    assert_eq!(got, want)
+}
+
 fn assert_sheet_row(got: &Vec<CellType>, want: &Vec<CellType>) {
     assert_eq!(got.len(), want.len());
 
