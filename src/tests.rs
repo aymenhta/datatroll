@@ -72,7 +72,7 @@ fn test_mean() {
     let mut sheet = Sheet::new_sheet();
     sheet.load_data("data.csv").unwrap();
 
-    assert_eq!(sheet.mean("review"), 3.72)
+    assert_eq!(sheet.mean("review").unwrap(), 3.72)
 }
 
 #[test]
@@ -123,6 +123,81 @@ fn test_min_float64() {
     sheet.load_data("data.csv").unwrap();
 
     assert_eq!(sheet.min_float64("review").unwrap(), 1.2)
+}
+
+#[test]
+fn test_insert() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("data.csv").unwrap();
+
+    sheet
+        .insert_row("7, hello, quintin, 2007, 2.4, true")
+        .unwrap();
+    let want = vec![
+        CellType::IntCell(7),
+        CellType::StringCell("hello".to_string()),
+        CellType::StringCell("quintin".to_string()),
+        CellType::IntCell(2007),
+        CellType::FloatCell(2.4),
+        CellType::BooleanCell(true),
+    ];
+    let got = sheet.data.last().unwrap();
+
+    assert_sheet_row(&got, &want)
+}
+
+#[test]
+fn test_drop_rows() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("data.csv").unwrap();
+
+    sheet.drop_rows("review", |c| {
+        if let CellType::FloatCell(r) = c {
+            if *r < 4.0 {
+                return true;
+            }
+        }
+        false
+    });
+
+    let want = vec![
+        vec![
+            CellType::StringCell("id".to_string()),
+            CellType::StringCell("title".to_string()),
+            CellType::StringCell("director".to_string()),
+            CellType::StringCell("release date".to_string()),
+            CellType::StringCell("review".to_string()),
+            CellType::StringCell("overrated".to_string()),
+        ],
+        vec![
+            CellType::IntCell(2),
+            CellType::StringCell("her".to_string()),
+            CellType::StringCell("quintin".to_string()),
+            CellType::IntCell(2013),
+            CellType::FloatCell(4.2),
+            CellType::BooleanCell(true),
+        ],
+        vec![
+            CellType::IntCell(4),
+            CellType::StringCell("hey".to_string()),
+            CellType::StringCell("nolan".to_string()),
+            CellType::IntCell(1997),
+            CellType::FloatCell(4.7),
+            CellType::BooleanCell(true),
+        ],
+        vec![
+            CellType::IntCell(5),
+            CellType::StringCell("who".to_string()),
+            CellType::StringCell("martin".to_string()),
+            CellType::IntCell(2017),
+            CellType::FloatCell(5.0),
+            CellType::BooleanCell(false),
+        ],
+    ];
+
+    for i in 1..sheet.data.len() {
+        assert_sheet_row(&sheet.data[i], &want[i]);
+    }
 }
 
 fn assert_sheet_row(got: &Vec<CellType>, want: &Vec<CellType>) {

@@ -1,5 +1,6 @@
 use std::{error::Error, fs};
 
+// TODO: ADD SUPPORT FOR NULLABLE
 #[derive(Debug, Clone, PartialEq)]
 pub enum CellType {
     StringCell(String),
@@ -8,6 +9,7 @@ pub enum CellType {
     FloatCell(f64),
 }
 
+// TODO: DROP COl, Variance, Co-Variance
 #[derive(Debug, Default)]
 pub struct Sheet {
     pub data: Vec<Vec<CellType>>,
@@ -20,6 +22,7 @@ impl Sheet {
         }
     }
 
+    // TODO: ALSO SUPPORT EXPORTING DATA TO CSV/JSON FILES
     pub fn load_data(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
         // check for ext
         if file_path.split('.').last() != Some("csv") {
@@ -41,7 +44,29 @@ impl Sheet {
         Ok(())
     }
 
-    pub fn mean(&self, column: &str) -> f64 {
+    pub fn insert_row(&mut self, input: &str) -> Result<(), Box<dyn Error>> {
+        let row: Vec<CellType> = input
+            .split(',')
+            .map(|s| s.trim())
+            .map(parse_string)
+            .collect();
+        if row.len() != self.data[0].len() {
+            return Err(Box::from("invalid input"));
+        }
+
+        self.data.push(row);
+        Ok(())
+    }
+
+    pub fn drop_rows<F>(&mut self, column: &str, predicate: F)
+    where
+        F: FnOnce(&CellType) -> bool + Copy,
+    {
+        let col_index = self.get_col_index(column).expect("column doesn't exist");
+        self.data.retain(|row| !predicate(&row[col_index]));
+    }
+
+    pub fn mean(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut sum = 0_f64;
 
@@ -49,13 +74,13 @@ impl Sheet {
             let val = match self.data[i][index] {
                 CellType::IntCell(x) => x as f64,
                 CellType::FloatCell(f) => f,
-                _ => panic!("not supported"), // todo: see if we should propagate the error or not
+                _ => return Err(Box::from("column value should be an i64 or a f64"))
             };
 
             sum += val
         }
 
-        sum / ((self.data.len() - 1) as f64)
+        Ok(sum / ((self.data.len() - 1) as f64))
     }
 
     /// median calculates the value in the middle of the provided column
@@ -67,7 +92,7 @@ impl Sheet {
     }
 
     // mode get the most frequent item of a column
-    // todo: also support Bimodal, Trimodal & Multimodal
+    // TODO: also support Bimodal, Trimodal & Multimodal
     pub fn mode(&self, column: &str) -> (CellType, i32) {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         let fq = self.build_frequency_table(col_index);
@@ -89,14 +114,6 @@ impl Sheet {
 
         for i in 1..self.data.len() {
             let cell = &self.data[i][col_index];
-            // for item in &mut frequency_table {
-            //     if item.0 == *cell {
-            //         item.1 = item.1 + 1;
-            //         continue;
-            //     } else {
-            //         frequency_table.push((cell.clone(), 1))
-            //     }
-            // }
             if frequency_table.is_empty() {
                 frequency_table.push((cell.clone(), 1));
                 continue;
@@ -195,16 +212,21 @@ impl Sheet {
         Ok(min)
     }
 
+    pub fn pretty_print(&self) {
+        println!("[");
+        self.data.iter().for_each(|row| {
+            println!("\t<{:?}>,", row)
+        });
+        println!("]");
+    }
+
     fn get_col_index(&self, column: &str) -> Option<usize> {
         for i in 0..self.data[0].len() {
-            let colname = match &self.data[0][i] {
-                CellType::StringCell(s) => s,
-                _ => panic!("not supported type for head"),
+            if let CellType::StringCell(colname) = &self.data[0][i] {
+                if colname == column {
+                    return Some(i);
+                }
             };
-
-            if colname == column {
-                return Some(i);
-            }
         }
 
         None
