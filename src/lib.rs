@@ -9,7 +9,7 @@ pub enum CellType {
     FloatCell(f64),
 }
 
-// TODO: DROP COl, Variance, Co-Variance
+// TODO: Variance, Co-Variance
 #[derive(Debug, Default)]
 pub struct Sheet {
     pub data: Vec<Vec<CellType>>,
@@ -64,6 +64,13 @@ impl Sheet {
     {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         self.data.retain(|row| !predicate(&row[col_index]));
+    }
+
+    pub fn drop_col(&mut self, column: &str) {
+        let col_index = self.get_col_index(column).expect("column doesn't exist");
+        for i in 0..self.data.len() {
+            self.data[i].remove(col_index);
+        }
     }
 
     pub fn mean(&self, column: &str) -> Result<f64, Box<dyn Error>> {
