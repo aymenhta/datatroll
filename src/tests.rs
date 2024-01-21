@@ -267,6 +267,33 @@ fn test_variance() {
     assert_eq!(got, want)
 }
 
+#[test]
+fn test_find_first_row() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("test_data.csv").unwrap();
+
+    let got = sheet.find_first_row("review", |c| {
+        if let Cell::Float(r) = c {
+            if *r > 4.0 {
+                return true;
+            }
+        }
+        false
+    });
+
+    let got2 = sheet.find_first_row("id", |c| {
+        if let Cell::Int(i) = c {
+            if *i > 10 {
+                return true;
+            }
+        }
+        false
+    });
+
+    assert!(got.is_some());
+    assert!(got2.is_none());
+}
+
 fn assert_sheet_row(got: &Vec<Cell>, want: &Vec<Cell>) {
     assert_eq!(got.len(), want.len());
 
