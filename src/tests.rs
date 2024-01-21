@@ -3,56 +3,56 @@ use super::*;
 #[test]
 fn test_data_loading() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     let want = vec![
         vec![
-            CellType::StringCell("id".to_string()),
-            CellType::StringCell("title".to_string()),
-            CellType::StringCell("director".to_string()),
-            CellType::StringCell("release date".to_string()),
-            CellType::StringCell("review".to_string()),
-            CellType::StringCell("overrated".to_string()),
+            Cell::String("id".to_string()),
+            Cell::String("title".to_string()),
+            Cell::String("director".to_string()),
+            Cell::String("release date".to_string()),
+            Cell::String("review".to_string()),
+            Cell::String("overrated".to_string()),
         ],
         vec![
-            CellType::IntCell(1),
-            CellType::StringCell("old".to_string()),
-            CellType::StringCell("quintin".to_string()),
-            CellType::IntCell(2011),
-            CellType::FloatCell(3.5),
-            CellType::BooleanCell(true),
+            Cell::Int(1),
+            Cell::String("old".to_string()),
+            Cell::String("quintin".to_string()),
+            Cell::Int(2011),
+            Cell::Float(3.5),
+            Cell::Bool(true),
         ],
         vec![
-            CellType::IntCell(2),
-            CellType::StringCell("her".to_string()),
-            CellType::StringCell("quintin".to_string()),
-            CellType::IntCell(2013),
-            CellType::FloatCell(4.2),
-            CellType::BooleanCell(true),
+            Cell::Int(2),
+            Cell::String("her".to_string()),
+            Cell::String("quintin".to_string()),
+            Cell::Int(2013),
+            Cell::Float(4.2),
+            Cell::Bool(true),
         ],
         vec![
-            CellType::IntCell(3),
-            CellType::StringCell("easy".to_string()),
-            CellType::StringCell("scorces".to_string()),
-            CellType::IntCell(2005),
-            CellType::FloatCell(1.0),
-            CellType::BooleanCell(false),
+            Cell::Int(3),
+            Cell::String("easy".to_string()),
+            Cell::String("scorces".to_string()),
+            Cell::Int(2005),
+            Cell::Float(1.0),
+            Cell::Bool(false),
         ],
         vec![
-            CellType::IntCell(4),
-            CellType::StringCell("hey".to_string()),
-            CellType::StringCell("nolan".to_string()),
-            CellType::IntCell(1997),
-            CellType::FloatCell(4.7),
-            CellType::BooleanCell(true),
+            Cell::Int(4),
+            Cell::String("hey".to_string()),
+            Cell::String("nolan".to_string()),
+            Cell::Int(1997),
+            Cell::Float(4.7),
+            Cell::Bool(true),
         ],
         vec![
-            CellType::IntCell(5),
-            CellType::StringCell("who".to_string()),
-            CellType::StringCell("martin".to_string()),
-            CellType::IntCell(2017),
-            CellType::FloatCell(5.0),
-            CellType::BooleanCell(false),
+            Cell::Int(5),
+            Cell::String("who".to_string()),
+            Cell::String("martin".to_string()),
+            Cell::Int(2017),
+            Cell::Float(5.0),
+            Cell::Bool(false),
         ],
     ];
 
@@ -70,7 +70,7 @@ fn test_data_loading_should_return_err() {
 #[test]
 fn test_mean() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     assert_eq!(sheet.mean("review").unwrap(), 3.72)
 }
@@ -78,9 +78,9 @@ fn test_mean() {
 #[test]
 fn test_median() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
-    assert_eq!(sheet.median("release date"), CellType::IntCell(2005))
+    assert_eq!(*sheet.median("release date"), Cell::Int(2005))
 }
 
 #[test]
@@ -89,14 +89,14 @@ fn test_mode() {
     sheet.load_data("freq_data.csv").unwrap();
 
     let got = sheet.mode("director");
-    let want = (CellType::StringCell("scorces".to_string()), 3);
+    let want = (Cell::String("scorces".to_string()), 3);
     assert_eq!(got, want)
 }
 
 #[test]
 fn test_max_int64() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     assert_eq!(sheet.max_int64("release date").unwrap(), 2017)
 }
@@ -104,7 +104,7 @@ fn test_max_int64() {
 #[test]
 fn test_max_float64() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     assert_eq!(sheet.max_float64("review").unwrap(), 5.0)
 }
@@ -112,7 +112,7 @@ fn test_max_float64() {
 #[test]
 fn test_min_int64() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     assert_eq!(sheet.min_int64("release date").unwrap(), 1997)
 }
@@ -120,7 +120,7 @@ fn test_min_int64() {
 #[test]
 fn test_min_float64() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     assert_eq!(sheet.min_float64("review").unwrap(), 1.2)
 }
@@ -128,18 +128,18 @@ fn test_min_float64() {
 #[test]
 fn test_insert() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     sheet
         .insert_row("7, hello, quintin, 2007, 2.4, true")
         .unwrap();
     let want = vec![
-        CellType::IntCell(7),
-        CellType::StringCell("hello".to_string()),
-        CellType::StringCell("quintin".to_string()),
-        CellType::IntCell(2007),
-        CellType::FloatCell(2.4),
-        CellType::BooleanCell(true),
+        Cell::Int(7),
+        Cell::String("hello".to_string()),
+        Cell::String("quintin".to_string()),
+        Cell::Int(2007),
+        Cell::Float(2.4),
+        Cell::Bool(true),
     ];
     let got = sheet.data.last().unwrap();
 
@@ -149,10 +149,10 @@ fn test_insert() {
 #[test]
 fn test_drop_rows() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     sheet.drop_rows("review", |c| {
-        if let CellType::FloatCell(r) = c {
+        if let Cell::Float(r) = c {
             if *r < 4.0 {
                 return true;
             }
@@ -162,36 +162,36 @@ fn test_drop_rows() {
 
     let want = vec![
         vec![
-            CellType::StringCell("id".to_string()),
-            CellType::StringCell("title".to_string()),
-            CellType::StringCell("director".to_string()),
-            CellType::StringCell("release date".to_string()),
-            CellType::StringCell("review".to_string()),
-            CellType::StringCell("overrated".to_string()),
+            Cell::String("id".to_string()),
+            Cell::String("title".to_string()),
+            Cell::String("director".to_string()),
+            Cell::String("release date".to_string()),
+            Cell::String("review".to_string()),
+            Cell::String("overrated".to_string()),
         ],
         vec![
-            CellType::IntCell(2),
-            CellType::StringCell("her".to_string()),
-            CellType::StringCell("quintin".to_string()),
-            CellType::IntCell(2013),
-            CellType::FloatCell(4.2),
-            CellType::BooleanCell(true),
+            Cell::Int(2),
+            Cell::String("her".to_string()),
+            Cell::String("quintin".to_string()),
+            Cell::Int(2013),
+            Cell::Float(4.2),
+            Cell::Bool(true),
         ],
         vec![
-            CellType::IntCell(4),
-            CellType::StringCell("hey".to_string()),
-            CellType::StringCell("nolan".to_string()),
-            CellType::IntCell(1997),
-            CellType::FloatCell(4.7),
-            CellType::BooleanCell(true),
+            Cell::Int(4),
+            Cell::String("hey".to_string()),
+            Cell::String("nolan".to_string()),
+            Cell::Int(1997),
+            Cell::Float(4.7),
+            Cell::Bool(true),
         ],
         vec![
-            CellType::IntCell(5),
-            CellType::StringCell("who".to_string()),
-            CellType::StringCell("martin".to_string()),
-            CellType::IntCell(2017),
-            CellType::FloatCell(5.0),
-            CellType::BooleanCell(false),
+            Cell::Int(5),
+            Cell::String("who".to_string()),
+            Cell::String("martin".to_string()),
+            Cell::Int(2017),
+            Cell::Float(5.0),
+            Cell::Bool(false),
         ],
     ];
 
@@ -203,52 +203,52 @@ fn test_drop_rows() {
 #[test]
 fn test_drop_col() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     sheet.drop_col("overrated");
 
     let want = vec![
         vec![
-            CellType::StringCell("id".to_string()),
-            CellType::StringCell("title".to_string()),
-            CellType::StringCell("director".to_string()),
-            CellType::StringCell("release date".to_string()),
-            CellType::StringCell("review".to_string()),
+            Cell::String("id".to_string()),
+            Cell::String("title".to_string()),
+            Cell::String("director".to_string()),
+            Cell::String("release date".to_string()),
+            Cell::String("review".to_string()),
         ],
         vec![
-            CellType::IntCell(1),
-            CellType::StringCell("old".to_string()),
-            CellType::StringCell("quintin".to_string()),
-            CellType::IntCell(2011),
-            CellType::FloatCell(3.5),
+            Cell::Int(1),
+            Cell::String("old".to_string()),
+            Cell::String("quintin".to_string()),
+            Cell::Int(2011),
+            Cell::Float(3.5),
         ],
         vec![
-            CellType::IntCell(2),
-            CellType::StringCell("her".to_string()),
-            CellType::StringCell("quintin".to_string()),
-            CellType::IntCell(2013),
-            CellType::FloatCell(4.2),
+            Cell::Int(2),
+            Cell::String("her".to_string()),
+            Cell::String("quintin".to_string()),
+            Cell::Int(2013),
+            Cell::Float(4.2),
         ],
         vec![
-            CellType::IntCell(3),
-            CellType::StringCell("easy".to_string()),
-            CellType::StringCell("scorces".to_string()),
-            CellType::IntCell(2005),
-            CellType::FloatCell(1.0),
+            Cell::Int(3),
+            Cell::String("easy".to_string()),
+            Cell::String("scorces".to_string()),
+            Cell::Int(2005),
+            Cell::Float(1.0),
         ],
         vec![
-            CellType::IntCell(4),
-            CellType::StringCell("hey".to_string()),
-            CellType::StringCell("nolan".to_string()),
-            CellType::IntCell(1997),
-            CellType::FloatCell(4.7),
+            Cell::Int(4),
+            Cell::String("hey".to_string()),
+            Cell::String("nolan".to_string()),
+            Cell::Int(1997),
+            Cell::Float(4.7),
         ],
         vec![
-            CellType::IntCell(5),
-            CellType::StringCell("who".to_string()),
-            CellType::StringCell("martin".to_string()),
-            CellType::IntCell(2017),
-            CellType::FloatCell(5.0),
+            Cell::Int(5),
+            Cell::String("who".to_string()),
+            Cell::String("martin".to_string()),
+            Cell::Int(2017),
+            Cell::Float(5.0),
         ],
     ];
 
@@ -260,63 +260,63 @@ fn test_drop_col() {
 #[test]
 fn test_variance() {
     let mut sheet = Sheet::new_sheet();
-    sheet.load_data("data.csv").unwrap();
+    sheet.load_data("test_data.csv").unwrap();
 
     let got = sheet.variance("review").unwrap();
     let want = 1.8456000000000004;
     assert_eq!(got, want)
 }
 
-fn assert_sheet_row(got: &Vec<CellType>, want: &Vec<CellType>) {
+fn assert_sheet_row(got: &Vec<Cell>, want: &Vec<Cell>) {
     assert_eq!(got.len(), want.len());
 
     let id = match got[0] {
-        CellType::IntCell(i) => i,
+        Cell::Int(i) => i,
         _ => 0,
     };
 
     let title = match &got[1] {
-        CellType::StringCell(s) => s,
+        Cell::String(s) => s,
         _ => "",
     };
 
     let director = match &got[2] {
-        CellType::StringCell(s) => s,
+        Cell::String(s) => s,
         _ => "",
     };
 
     let release_date = match got[0] {
-        CellType::IntCell(i) => i,
+        Cell::Int(i) => i,
         _ => 0,
     };
 
     let review = match got[0] {
-        CellType::FloatCell(f) => f,
+        Cell::Float(f) => f,
         _ => 0_f64,
     };
 
     let want_id = match want[0] {
-        CellType::IntCell(i) => i,
+        Cell::Int(i) => i,
         _ => 0,
     };
 
     let want_title = match &want[1] {
-        CellType::StringCell(s) => s,
+        Cell::String(s) => s,
         _ => "",
     };
 
     let want_director = match &want[2] {
-        CellType::StringCell(s) => s,
+        Cell::String(s) => s,
         _ => "",
     };
 
     let want_release_date = match want[0] {
-        CellType::IntCell(i) => i,
+        Cell::Int(i) => i,
         _ => 0,
     };
 
     let want_review = match want[0] {
-        CellType::FloatCell(f) => f,
+        Cell::Float(f) => f,
         _ => 0_f64,
     };
 

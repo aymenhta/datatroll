@@ -1,23 +1,23 @@
 use std::{error::Error, fs};
 
-// TODO: ADD SUPPORT FOR NULLABLE
 #[derive(Debug, Clone, PartialEq)]
-pub enum CellType {
-    StringCell(String),
-    BooleanCell(bool),
-    IntCell(i64),
-    FloatCell(f64),
+pub enum Cell {
+    Null,
+    String(String),
+    Bool(bool),
+    Int(i64),
+    Float(f64),
 }
 
 #[derive(Debug, Default)]
 pub struct Sheet {
-    pub data: Vec<Vec<CellType>>,
+    pub data: Vec<Vec<Cell>>,
 }
 
 impl Sheet {
     pub fn new_sheet() -> Self {
         Self {
-            data: Vec::<Vec<CellType>>::new(),
+            data: Vec::<Vec<Cell>>::new(),
         }
     }
 
@@ -32,7 +32,7 @@ impl Sheet {
 
         let content = fs::read_to_string(file_path)?;
         content.lines().for_each(|line| {
-            let row: Vec<CellType> = line
+            let row: Vec<Cell> = line
                 .split(',')
                 .map(|s| s.trim())
                 .map(parse_string)
@@ -44,7 +44,7 @@ impl Sheet {
     }
 
     pub fn insert_row(&mut self, input: &str) -> Result<(), Box<dyn Error>> {
-        let row: Vec<CellType> = input
+        let row: Vec<Cell> = input
             .split(',')
             .map(|s| s.trim())
             .map(parse_string)
@@ -59,7 +59,7 @@ impl Sheet {
 
     pub fn drop_rows<F>(&mut self, column: &str, predicate: F)
     where
-        F: FnOnce(&CellType) -> bool + Copy,
+        F: FnOnce(&Cell) -> bool + Copy,
     {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         self.data.retain(|row| !predicate(&row[col_index]));
@@ -80,9 +80,12 @@ impl Sheet {
         let mut sum = 0_f64;
 
         for i in 1..self.data.len() {
-            let val = match self.data[i][index] {
-                CellType::IntCell(x) => x as f64,
-                CellType::FloatCell(f) => f,
+            let val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Int(x) => *x as f64,
+                Cell::Float(f) => *f,
                 _ => return Err(Box::from("column value should be an i64 or a f64")),
             };
 
@@ -102,9 +105,12 @@ impl Sheet {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut total_sum = 0_f64;
         for i in 1..self.data.len() {
-            let val = match self.data[i][index] {
-                CellType::IntCell(x) => x as f64,
-                CellType::FloatCell(f) => f,
+            let val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Int(x) => *x as f64,
+                Cell::Float(f) => *f,
                 _ => return Err(Box::from("column value should be an i64 or a f64")),
             };
 
@@ -115,16 +121,18 @@ impl Sheet {
     }
 
     /// median calculates the value in the middle of the provided column
-    pub fn median(&self, column: &str) -> CellType {
+    pub fn median(&self, column: &str) -> &Cell {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         let row_index = ((self.data.len() - 1) + 1) / 2;
 
-        self.data[row_index][col_index].clone()
+        self.data[row_index]
+            .get(col_index)
+            .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, row_index))
     }
 
     // mode get the most frequent item of a column
     // TODO: also support Bimodal, Trimodal & Multimodal
-    pub fn mode(&self, column: &str) -> (CellType, i32) {
+    pub fn mode(&self, column: &str) -> (Cell, i32) {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         let fq = self.build_frequency_table(col_index);
         let mut max = 0;
@@ -140,11 +148,13 @@ impl Sheet {
         fq[max_index].clone()
     }
 
-    fn build_frequency_table(&self, col_index: usize) -> Vec<(CellType, i32)> {
-        let mut frequency_table: Vec<(CellType, i32)> = Vec::new();
+    fn build_frequency_table(&self, col_index: usize) -> Vec<(Cell, i32)> {
+        let mut frequency_table: Vec<(Cell, i32)> = Vec::new();
 
         for i in 1..self.data.len() {
-            let cell = &self.data[i][col_index];
+            let cell = self.data[i]
+                .get(col_index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, i));
             if frequency_table.is_empty() {
                 frequency_table.push((cell.clone(), 1));
                 continue;
@@ -166,8 +176,11 @@ impl Sheet {
         let mut max = 0_i64;
 
         for i in 1..self.data.len() {
-            let row_val = match self.data[i][index] {
-                CellType::IntCell(x) => x,
+            let row_val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Int(x) => *x,
                 _ => return Err(Box::from("max_int64 should only works on int values")),
             };
 
@@ -184,8 +197,11 @@ impl Sheet {
         let mut max = 0_f64;
 
         for i in 1..self.data.len() {
-            let row_val = match self.data[i][index] {
-                CellType::FloatCell(x) => x,
+            let row_val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Float(f) => *f,
                 _ => return Err(Box::from("max_int64 should only works on int values")),
             };
 
@@ -202,8 +218,11 @@ impl Sheet {
         let mut min = 0_i64;
 
         for i in 1..self.data.len() {
-            let row_val = match self.data[i][index] {
-                CellType::IntCell(x) => x,
+            let row_val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Int(x) => *x,
                 _ => return Err(Box::from("max_int64 should only works on int values")),
             };
 
@@ -225,8 +244,11 @@ impl Sheet {
         let mut min = 0_f64;
 
         for i in 1..self.data.len() {
-            let row_val = match self.data[i][index] {
-                CellType::FloatCell(x) => x,
+            let row_val = match self.data[i]
+                .get(index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
+            {
+                Cell::Float(f) => *f,
                 _ => return Err(Box::from("max_int64 should only works on int values")),
             };
 
@@ -245,13 +267,23 @@ impl Sheet {
 
     pub fn pretty_print(&self) {
         println!("[");
-        self.data.iter().for_each(|row| println!("\t<{:?}>,", row));
+        self.data.iter().for_each(|row| {
+            print!("\t(");
+            row.iter().for_each(|cell| match cell {
+                Cell::String(s) => print!("{s},"),
+                Cell::Bool(b) => print!("{b},"),
+                Cell::Int(x) => print!("{x},"),
+                Cell::Float(f) => print!("{f},"),
+                Cell::Null => print!(" ,"),
+            });
+            println!(")");
+        });
         println!("]");
     }
 
     fn get_col_index(&self, column: &str) -> Option<usize> {
         for i in 0..self.data[0].len() {
-            if let CellType::StringCell(colname) = &self.data[0][i] {
+            if let Cell::String(colname) = &self.data[0][i] {
                 if colname == column {
                     return Some(i);
                 }
@@ -262,24 +294,28 @@ impl Sheet {
     }
 }
 
-fn parse_string(s: &str) -> CellType {
+fn parse_string(s: &str) -> Cell {
     if s == "true" {
-        return CellType::BooleanCell(true);
+        return Cell::Bool(true);
     }
 
     if s == "false" {
-        return CellType::BooleanCell(false);
+        return Cell::Bool(false);
     }
 
     if let Ok(i) = s.parse::<i64>() {
-        return CellType::IntCell(i);
+        return Cell::Int(i);
     }
 
     if let Ok(f) = s.parse::<f64>() {
-        return CellType::FloatCell(f);
+        return Cell::Float(f);
     }
 
-    CellType::StringCell(s.to_string())
+    if s.is_empty() {
+        return Cell::Null;
+    }
+
+    Cell::String(s.to_string())
 }
 
 #[cfg(test)]

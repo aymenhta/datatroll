@@ -16,3 +16,4 @@ Cargo.lock
 src/main.rs
 data.csv
 freq_data.csv
+test_data.csv
