@@ -4,6 +4,7 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
 };
 
+/// Represents different types of data that can be stored in a cell.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cell {
     Null,
@@ -13,6 +14,7 @@ pub enum Cell {
     Float(f64),
 }
 
+/// Represents a 2D array of cells, forming a sheet of data.
 #[derive(Debug, Default)]
 pub struct Sheet {
     pub data: Vec<Vec<Cell>>,
@@ -26,7 +28,32 @@ impl Sheet {
         }
     }
 
-    /// load_data loads the data from disk into memory, and also performs some checks on the file
+    /// Loads data from a CSV file into the Sheet's data structure.
+    ///
+    /// This function reads the content of a CSV file specified by `file_path` and populates
+    /// the Sheet's data structure accordingly. The file must have a ".csv" extension, and
+    /// its content should be in CSV (Comma-Separated Values) format.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path to the CSV file to load.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Result` indicating success or an error if the file cannot be opened,
+    /// read, or if the file format is unsupported.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut sheet = Sheet::default();
+    ///
+    /// if let Err(err) = sheet.load_data("input.csv") {
+    ///     eprintln!("Error loading data: {}", err);
+    /// } else {
+    ///     println!("Data loaded successfully from input.csv");
+    /// }
+    /// ```
     pub fn load_data(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
         // check for ext
         if file_path.split('.').last() != Some("csv") {
@@ -49,7 +76,37 @@ impl Sheet {
         Ok(())
     }
 
-    // export writes the sheet to file
+    /// Exports the content of a Sheet to a CSV file.
+    ///
+    /// The function writes the content of the Sheet into a CSV file specified by `file_path`.
+    /// If the file already exists, it truncates the file and overwrites its content.
+    ///
+    /// # Arguments
+    ///
+    /// * `sheet` - The Sheet containing the data to export.
+    /// * `file_path` - The path to the CSV file.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let cell_string = Cell::String(String::from("Hello, Rust!"));
+    /// let cell_int = Cell::Int(42);
+    ///
+    /// let row1 = vec![cell_string, Cell::Bool(true), cell_int];
+    /// let row2 = vec![Cell::Null, Cell::Float(3.14), Cell::String(String::from("World"))];
+    ///
+    /// let sheet = Sheet { data: vec![row1, row2] };
+    ///
+    /// if let Err(err) = sheet.export("output.csv") {
+    ///     eprintln!("Error exporting data: {}", err);
+    /// } else {
+    ///     println!("Data exported successfully to output.csv");
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Result` indicating success or failure.
     pub fn export(&self, file_path: &str) -> Result<(), Box<dyn Error>> {
         // check for ext
         if file_path.split('.').last() != Some("csv") {
