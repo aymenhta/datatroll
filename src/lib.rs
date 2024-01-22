@@ -1,4 +1,8 @@
-use std::{error::Error, fs};
+use std::{
+    error::Error,
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Read, Write},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cell {
@@ -22,7 +26,6 @@ impl Sheet {
         }
     }
 
-    // TODO: ALSO SUPPORT EXPORTING DATA TO CSV/JSON FILES
     /// load_data loads the data from disk into memory, and also performs some checks on the file
     pub fn load_data(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
         // check for ext
@@ -32,12 +35,51 @@ impl Sheet {
             ));
         }
 
-        let content = fs::read_to_string(file_path)?;
+        let f = File::open(file_path)?;
+        let mut reader = BufReader::new(f);
+        let mut content = String::new();
+
+        reader.read_to_string(&mut content)?;
+
         content.lines().for_each(|line| {
             let row: Vec<Cell> = line.split(',').map(|s| s.trim()).map(parse_token).collect();
             self.data.push(row);
         });
 
+        Ok(())
+    }
+
+    // export writes the sheet to file
+    pub fn export(&self, file_path: &str) -> Result<(), Box<dyn Error>> {
+        // check for ext
+        if file_path.split('.').last() != Some("csv") {
+            return Err(Box::from(
+                "the provided file path is invalid, or of unsupported format",
+            ));
+        }
+
+        let file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(file_path)?;
+
+        let mut buf_writer = BufWriter::new(file);
+
+        for row in &self.data {
+            for cell in row {
+                match cell {
+                    Cell::Null => write!(buf_writer, ",")?,
+                    Cell::String(s) => write!(buf_writer, "{},", s)?,
+                    Cell::Bool(b) => write!(buf_writer, "{},", b)?,
+                    Cell::Int(i) => write!(buf_writer, "{},", i)?,
+                    Cell::Float(f) => write!(buf_writer, "{},", f)?,
+                }
+            }
+            writeln!(buf_writer)?; // Move to the next line after each row
+        }
+
+        buf_writer.flush()?; // Ensure any remaining data is written to the file
         Ok(())
     }
 
@@ -74,6 +116,25 @@ impl Sheet {
         }
 
         None
+    }
+
+    pub fn find_rows<F>(&self, column: &str, predicate: F) -> Vec<Vec<Cell>>
+    where
+        F: FnOnce(&Cell) -> bool + Copy,
+    {
+        let col_index = self.get_col_index(column).expect("column doesn't exist");
+        let mut res: Vec<Vec<Cell>> = Default::default();
+
+        for i in 1..self.data.len() {
+            let cell = self.data[i]
+                .get(col_index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, i));
+            if predicate(cell) {
+                res.push(self.data[i].clone());
+            }
+        }
+
+        res
     }
 
     /// drop_rows delete all rows in which they contains cells that satisfies a provided predicate
@@ -215,8 +276,8 @@ impl Sheet {
         Ok(max)
     }
 
-    /// max_float64 return the maximum value of a column of float values.
-    /// if encountered with any type other than **Cell:Float(f64)** it exist an error.
+    /// max_float64 return the maximum value of a column of float and integer values.
+    /// if encountered with any type other than **Cell:Float(f64)** or **Cell::Int(i64)** it exist an error.
     pub fn max_float64(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut max = 0_f64;
@@ -227,7 +288,12 @@ impl Sheet {
                 .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
             {
                 Cell::Float(f) => *f,
-                _ => return Err(Box::from("max_float64 should only works on float values")),
+                Cell::Int(i) => *i as f64,
+                _ => {
+                    return Err(Box::from(
+                        "max_float64 should only works on float and int values",
+                    ))
+                }
             };
 
             if max < row_val {
@@ -266,8 +332,8 @@ impl Sheet {
         Ok(min)
     }
 
-    /// min_float64 return the minimum value of a column of float values.
-    /// if encountered with any type other than **Cell:Float(f64)** it exist an error.
+    /// min_float64 return the minimum value of a column of float and integer values.
+    /// if encountered with any type other than **Cell:Float(f64)** or **Cell::Int(i64)** it exist an error
     pub fn min_float64(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut min = 0_f64;
@@ -278,7 +344,12 @@ impl Sheet {
                 .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", index, i))
             {
                 Cell::Float(f) => *f,
-                _ => return Err(Box::from("min_float64 should only works on float values")),
+                Cell::Int(i) => *i as f64,
+                _ => {
+                    return Err(Box::from(
+                        "min_float64 should only works on float and int values",
+                    ))
+                }
             };
 
             if i == 1 {
@@ -292,6 +363,48 @@ impl Sheet {
         }
 
         Ok(min)
+    }
+
+    /// describe prints general infos about the sheet to the standard output in a formatted manner
+    pub fn describe(&self) {
+        println!("[");
+        for i in 0..5 {
+            print!("\t(");
+            self.data[i].iter().for_each(|cell| match cell {
+                Cell::String(s) => print!("{s},"),
+                Cell::Bool(b) => print!("{b},"),
+                Cell::Int(x) => print!("{x},"),
+                Cell::Float(f) => print!("{f},"),
+                Cell::Null => print!(" ,"),
+            });
+            println!(")");
+        }
+
+        let col_len = self.data[0].len();
+        for _ in 0..col_len * 10 {
+            print!("-");
+        }
+        println!();
+
+        let len = self.data.len();
+        for i in len - 5..len {
+            print!("\t(");
+            self.data[i].iter().for_each(|cell| match cell {
+                Cell::String(s) => print!("{s},"),
+                Cell::Bool(b) => print!("{b},"),
+                Cell::Int(x) => print!("{x},"),
+                Cell::Float(f) => print!("{f},"),
+                Cell::Null => print!(" ,"),
+            });
+            println!(")");
+        }
+        println!("]");
+
+        println!(
+            "
+            number of rows: {len}
+            number of columns: {col_len}"
+        )
     }
 
     /// pretty_print prints the sheet to the standard output in a formatted manner
