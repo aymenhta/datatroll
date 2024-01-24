@@ -94,7 +94,6 @@ impl Sheet {
     ///
     /// # Arguments
     ///
-    /// * `sheet` - The Sheet containing the data to export.
     /// * `file_path` - The path to the CSV file.
     ///
     /// # Examples
@@ -118,6 +117,7 @@ impl Sheet {
     /// # Errors
     ///
     /// Returns an `Result` indicating success or failure.
+    ///
     pub fn export(&self, file_path: &str) -> Result<(), Box<dyn Error>> {
         // check for ext
         if file_path.split('.').last() != Some("csv") {
@@ -152,6 +152,29 @@ impl Sheet {
     }
 
     /// insert_row appends a row to the data sheet at the last position
+    ///
+    /// The function takes a comma seperated input string, trim the whitespace, parse it into a
+    /// vector oc Cell and then push it to the sheet.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - input string to be inserted.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Result` indicating success or an error if the input is of unvalid format
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let row1 = vec![Cell::String("Hello, Rust!".to_string()), Cell::Bool(true), Cell::Int(42)];
+    /// let sheet = Sheet { data: vec![row1] };
+    ///
+    /// sheet.insert_row(",3.14,World")?;
+    ///
+    /// assert_eq!(sheet[0], row1);
+    /// assert_eq!(sheet[1], vec![Cell::Null, Cell::Float(3.14), Cell::String("World".to_string()]);
+    /// ```
     pub fn insert_row(&mut self, input: &str) -> Result<(), Box<dyn Error>> {
         let row: Vec<Cell> = input
             .split(',')
@@ -179,14 +202,18 @@ impl Sheet {
         Ok(())
     }
 
-    pub fn take(&self, offset: i32, amount: i32) -> Vec<Vec<Cell>> {
+    pub fn paginate(&self, page: i32, size: i32) -> Vec<Vec<Cell>> {
+        if page < 1 && size > 50 {
+            panic!("page should more than or equal 1, size should 50 per page at max")
+        }
         let mut res: Vec<Vec<Cell>> = Default::default();
+        let offset = ((page - 1) * size) + 1;
 
-        for i in offset..=amount {
+        for i in offset..(offset + size) {
             let row = self.data.get(i as usize).unwrap_or_else(|| {
                 panic!(
                     "offset '{}' and amount '{}' are out of bounds",
-                    offset, amount
+                    offset, size
                 )
             });
             res.push(row.clone())

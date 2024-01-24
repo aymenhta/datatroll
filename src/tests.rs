@@ -263,7 +263,8 @@ fn test_fill_col() {
     sheet.load_data("titles.csv").unwrap();
 
     sheet.fill_col("id", Cell::Null).unwrap();
-    for row in sheet.take(1, 10) {
+    for row in sheet.paginate(1, 10) {
+        println!("{:?}", row[1]);
         assert_eq!(Cell::Null, row[0]);
     }
 }
