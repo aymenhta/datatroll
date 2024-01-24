@@ -73,6 +73,17 @@ impl Sheet {
             self.data.push(row);
         });
 
+        // if some column values are absent from a row, then fill it with a default Cell::Null
+        let col_len = self.data[0].len();
+        for i in 1..self.data.len() {
+            let row_len = self.data[i].len();
+            if row_len < col_len {
+                for _ in 0..col_len - row_len {
+                    self.data[i].push(Cell::Null);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -153,6 +164,34 @@ impl Sheet {
 
         self.data.push(row);
         Ok(())
+    }
+
+    pub fn fill_col(&mut self, column: &str, value: Cell) -> Result<(), Box<dyn Error>> {
+        let col_index = self.get_col_index(column).expect("column doesn't exist");
+        for i in 1..self.data.len() {
+            let cell = self.data[i]
+                .get_mut(col_index)
+                .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, i));
+
+            *cell = value.clone();
+        }
+
+        Ok(())
+    }
+
+    pub fn take(&self, offset: i32, amount: i32) -> Vec<Vec<Cell>> {
+        let mut res: Vec<Vec<Cell>> = Default::default();
+
+        for i in offset..=amount {
+            let row = self.data.get(i as usize).unwrap_or_else(|| {
+                panic!(
+                    "offset '{}' and amount '{}' are out of bounds",
+                    offset, amount
+                )
+            });
+            res.push(row.clone())
+        }
+        res
     }
 
     /// find_first_row return the first row in which a column cell satisfies a predicate,

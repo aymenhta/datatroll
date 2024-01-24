@@ -258,6 +258,17 @@ fn test_drop_col() {
 }
 
 #[test]
+fn test_fill_col() {
+    let mut sheet = Sheet::new_sheet();
+    sheet.load_data("titles.csv").unwrap();
+
+    sheet.fill_col("id", Cell::Null).unwrap();
+    for row in sheet.take(1, 10) {
+        assert_eq!(Cell::Null, row[0]);
+    }
+}
+
+#[test]
 fn test_variance() {
     let mut sheet = Sheet::new_sheet();
     sheet.load_data("test_data.csv").unwrap();
