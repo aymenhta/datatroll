@@ -1,7 +1,7 @@
-//! datatroll is a robust and user-friendly Rust library for efficiently loading, manipulating, 
+//! datatroll is a robust and user-friendly Rust library for efficiently loading, manipulating,
 //! and exporting data stored in CSV files. Say goodbye to tedious hand-coding data parsing and
 //! welcome a streamlined workflow for wrangling your data with ease.
-//! 
+//!
 //! ## Features:
 //! - **Versatile Data Loading:**
 //!   - Read data from CSV files with configurable separators and headers.
@@ -19,11 +19,11 @@
 //! - **Seamless Data Export:**
 //!     - Write manipulated data back to a new CSV file, retaining original format or specifying your own.
 //!     - Customize output with options like separator selection and header inclusion.
-//! 
+//!
 //! # Example:
 //! ```rust
 //! use datatroll::{Cell, Sheet};
-//! 
+//!
 //! fn main() {
 //!     // Read data from a CSV file
 //!     let mut sheet = Sheet::new();
@@ -32,7 +32,7 @@
 //!     } else {
 //!         println!("Data loaded successfully from input.csv");
 //!     }
-//! 
+//!
 //!     // drop all the rows in which the review is less than 4.0
 //!     sheet.drop_rows("review", |c| {
 //!         if let Cell::Float(r) = c {
@@ -40,7 +40,7 @@
 //!         }
 //!         false
 //!     });
-//! 
+//!
 //!     // calculate the variance of the review column
 //!     let variance = sheet.variance("review").unwrap();
 //!     println!("variance for review is: {variance}");
