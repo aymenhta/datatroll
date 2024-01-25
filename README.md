@@ -3,7 +3,7 @@ datatroll is a robust and user-friendly Rust library for efficiently loading, ma
 
 ### Features:
 - **Versatile Data Loading:**
-    - Read data from CSV files with configurable separators and headers.
+  - Read data from CSV files with configurable separators and headers.
   - Specify data types for each column, ensuring type safety and efficient processing.
   - Handle missing values with graceful error handling.
 - **Intuitive Data Manipulation:**
@@ -14,6 +14,7 @@ datatroll is a robust and user-friendly Rust library for efficiently loading, ma
         - Mode (most frequent value) of categorical columns.
         - Variance of numeric columns.
     - Apply custom transformations to specific columns using lambda functions.
+    - Supports Pagination
 - **Seamless Data Export:**
     - Write manipulated data back to a new CSV file, retaining original format or specifying your own.
     - Customize output with options like separator selection and header inclusion.
@@ -45,9 +46,7 @@ fn main() {
     // drop all the rows in which the review is less than 4.0
     sheet.drop_rows("review", |c| {
         if let Cell::Float(r) = c {
-            if *r < 4.0 {
-                return true;
-            }
+            return *r < 4.0;
         }
         false
     });

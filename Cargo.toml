@@ -8,7 +8,6 @@ categories = ["text-processing"]
 readme = "./README.md"
 license = "MIT"
 repository = "https://github.com/aymenhta/datatroll"
-documentation = "https://github.com/aymenhta/datatroll"
 homepage = "https://github.com/aymenhta/datatroll"
 description = "a robust and user-friendly Rust library for efficiently loading, manipulating, and exporting data stored in CSV files."
 

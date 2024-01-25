@@ -1,3 +1,59 @@
+//! datatroll is a robust and user-friendly Rust library for efficiently loading, manipulating, 
+//! and exporting data stored in CSV files. Say goodbye to tedious hand-coding data parsing and
+//! welcome a streamlined workflow for wrangling your data with ease.
+//! 
+//! ## Features:
+//! - **Versatile Data Loading:**
+//!   - Read data from CSV files with configurable separators and headers.
+//!   - Specify data types for each column, ensuring type safety and efficient processing.
+//!   - Handle missing values with graceful error handling.
+//! - **Intuitive Data Manipulation:**
+//!     - Insert new rows with custom values into your data.
+//!     - Drop unwanted rows or columns to focus on relevant data.
+//!     - Leverage powerful aggregations to calculate:
+//!         - Mean, max, min, and median of numeric columns.
+//!         - Mode (most frequent value) of categorical columns.
+//!         - Variance of numeric columns.
+//!     - Apply custom transformations to specific columns using lambda functions.
+//!     - Supports Pagination
+//! - **Seamless Data Export:**
+//!     - Write manipulated data back to a new CSV file, retaining original format or specifying your own.
+//!     - Customize output with options like separator selection and header inclusion.
+//! 
+//! # Example:
+//! ```rust
+//! use datatroll::{Cell, Sheet};
+//! 
+//! fn main() {
+//!     // Read data from a CSV file
+//!     let mut sheet = Sheet::new();
+//!     if let Err(err) = sheet.load_data("input.csv") {
+//!         eprintln!("Error loading data: {}", err);
+//!     } else {
+//!         println!("Data loaded successfully from input.csv");
+//!     }
+//! 
+//!     // drop all the rows in which the review is less than 4.0
+//!     sheet.drop_rows("review", |c| {
+//!         if let Cell::Float(r) = c {
+//!             return *r < 4.0;
+//!         }
+//!         false
+//!     });
+//! 
+//!     // calculate the variance of the review column
+//!     let variance = sheet.variance("review").unwrap();
+//!     println!("variance for review is: {variance}");
+//!     
+//!     // Write the transformed data to a new CSV file
+//!     if let Err(err) = sheet.export("output.csv") {
+//!         eprintln!("Error exporting data: {}", err);
+//!     } else {
+//!         println!("Data exported successfully to output.csv");
+//!     }
+//! }
+//! ```
+
 use std::{
     error::Error,
     fs::{File, OpenOptions},
@@ -5,7 +61,7 @@ use std::{
 };
 
 /// Represents different types of data that can be stored in a cell.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Cell {
     Null,
     String(String),
@@ -14,9 +70,10 @@ pub enum Cell {
     Float(f64),
 }
 
-/// Represents a 2D array of cells, forming a sheet of data.
+/// Represents a 2D vector of cells, forming a sheet of data.
 #[derive(Debug, Default)]
 pub struct Sheet {
+    /// 2D vector of cells
     pub data: Vec<Vec<Cell>>,
 }
 
@@ -45,7 +102,7 @@ impl Sheet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// let mut sheet = Sheet::default();
     ///
     /// if let Err(err) = sheet.load_data("input.csv") {
@@ -98,7 +155,7 @@ impl Sheet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// let cell_string = Cell::String(String::from("Hello, Rust!"));
     /// let cell_int = Cell::Int(42);
     ///
@@ -166,7 +223,7 @@ impl Sheet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// let row1 = vec![Cell::String("Hello, Rust!".to_string()), Cell::Bool(true), Cell::Int(42)];
     /// let sheet = Sheet { data: vec![row1] };
     ///
@@ -189,6 +246,33 @@ impl Sheet {
         Ok(())
     }
 
+    /// fill_col replace the value of a column in every row
+    ///
+    /// The function takes a column name and the value to be filled, and iterate through every row
+    /// and effectively replace its old cell values with the new value
+    ///
+    /// # Arguments
+    ///
+    /// * `column` - the column to be mutated
+    /// * `value` - the value which every row will be filled with
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Result` indicating success or an error
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let row1 = vec![Cell::String("greeting".to_string()), Cell::String("is_good".to_string()), Cell::String("count".to_string())];
+    /// let row2 = vec![Cell::String("Hello, Rust!".to_string()), Cell::Bool(false), Cell::Int(42)];
+    /// let row3 = vec![Cell::String("Hello, World!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let sheet = Sheet { data: vec![row1, row2, row3] };
+    ///
+    /// sheet.fill_col("greeting", Cell::Null)?;
+    ///
+    /// assert_eq!(sheet[1][0], Cell::Null);
+    /// assert_eq!(sheet[1][0], Cell::Null);
+    /// ```
     pub fn fill_col(&mut self, column: &str, value: Cell) -> Result<(), Box<dyn Error>> {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         for i in 1..self.data.len() {
@@ -202,15 +286,52 @@ impl Sheet {
         Ok(())
     }
 
-    pub fn paginate(&self, page: i32, size: i32) -> Vec<Vec<Cell>> {
-        if page < 1 && size > 50 {
-            panic!("page should more than or equal 1, size should 50 per page at max")
+    /// paginate takes part of a sheet with a fixed size and return it
+    ///
+    /// The function takes a page number and a page size, and slice the sheet and returns it as a page
+    /// of fixed size
+    ///
+    /// # Arguments
+    ///
+    /// * `page` - the number of the page
+    /// * `size` - number of rows for every page
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Result` indicating success or an error
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let row1 = vec![Cell::String("greeting".to_string()), Cell::String("is_good".to_string()), Cell::String("count".to_string())];
+    /// let row2 = vec![Cell::String("Hello, Rust!".to_string()), Cell::Bool(false), Cell::Int(42)];
+    /// let row3 = vec![Cell::String("Hello, World!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let row4 = vec![Cell::String("Hello, Dzair!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let row5 = vec![Cell::String("Hello, Africa!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let row6 = vec![Cell::String("Hello, Algeria!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let row7 = vec![Cell::String("Hello, Friday!".to_string()), Cell::Bool(true), Cell::Int(145)];
+    /// let sheet = Sheet { data: vec![row1, row2, row3, row4, row5, row6, row7] };
+    ///
+    /// let page = sheet.paginate(1, 2)?;
+    ///
+    /// assert_eq!(page[0][0], Cell::String("Hello, Rust!".to_string()));
+    /// assert_eq!(page[1][0], Cell::String("Hello, World!".to_string()));
+    /// ```
+    pub fn paginate(&self, page: usize, size: usize) -> Result<Vec<Vec<Cell>>, Box<dyn Error>> {
+        if page < 1 || size > 50 {
+            return Err(Box::from(
+                "page should more than or equal 1, size should 50 per page at max",
+            ));
         }
+        if page > (self.data.len() / size) {
+            return Err(Box::from("page unavailabe"));
+        }
+
         let mut res: Vec<Vec<Cell>> = Default::default();
         let offset = ((page - 1) * size) + 1;
 
         for i in offset..(offset + size) {
-            let row = self.data.get(i as usize).unwrap_or_else(|| {
+            let row = self.data.get(i).unwrap_or_else(|| {
                 panic!(
                     "offset '{}' and amount '{}' are out of bounds",
                     offset, size
@@ -218,11 +339,34 @@ impl Sheet {
             });
             res.push(row.clone())
         }
-        res
+
+        Ok(res)
     }
 
-    /// find_first_row return the first row in which a column cell satisfies a predicate,
-    /// if otherwise it returns None
+    /// Finds the first row in the table that matches a predicate applied to a specific column.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified column doesn't exist or is absent for a row.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let first_matching_rows = sheet.find_rows("Age", |cell| cell.as_int() >= 30);
+    /// ```
+    ///
+    /// # Generics
+    ///
+    /// The `predicate` argument is a generic function that allows for flexible filtering criteria.
+    /// It accepts a reference to a `Cell` and returns a boolean indicating whether the row matches.
+    ///
+    /// # Returns
+    ///
+    /// An `Option<&Vec<Cell>>`:
+    /// - `Some(&row)` if a matching row is found, where `row` is a reference to the first matching row.
+    /// - `None` if no matching row is found.
     pub fn find_first_row<F>(&self, column: &str, predicate: F) -> Option<&Vec<Cell>>
     where
         F: FnOnce(&Cell) -> bool + Copy,
@@ -241,6 +385,28 @@ impl Sheet {
         None
     }
 
+    /// Finds rows in the table that match a predicate applied to a specific column.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified column doesn't exist or is absent for a row.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let matching_rows = sheet.find_rows("Age", |cell| cell.as_int() >= 30);
+    /// ```
+    ///
+    /// # Generics
+    ///
+    /// The `predicate` argument is a generic function that allows for flexible filtering criteria.
+    /// It accepts a reference to a `Cell` and returns a boolean indicating whether the row matches.
+    ///
+    /// # Returns
+    ///
+    /// A vector of vectors, where each inner vector represents a row that matches the predicate.
     pub fn find_rows<F>(&self, column: &str, predicate: F) -> Vec<Vec<Cell>>
     where
         F: FnOnce(&Cell) -> bool + Copy,
@@ -260,7 +426,24 @@ impl Sheet {
         res
     }
 
-    /// drop_rows delete all rows in which they contains cells that satisfies a provided predicate
+    /// Removes rows from the table based on a predicate applied to a specific column.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified column doesn't exist.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// sheet.drop_rows("Age", |cell| cell.as_int() >= 30); // Removes rows where age is 30 or older
+    /// ```
+    ///
+    /// # Generics
+    ///
+    /// The `predicate` argument is a generic function that allows for flexible filtering criteria.
+    /// It accepts a reference to a `Cell` and returns a boolean indicating whether to keep the row.
     pub fn drop_rows<F>(&mut self, column: &str, predicate: F)
     where
         F: FnOnce(&Cell) -> bool + Copy,
@@ -269,16 +452,65 @@ impl Sheet {
         self.data.retain(|row| !predicate(&row[col_index]));
     }
 
-    pub fn drop_col(&mut self, column: &str) {
+    /// Removes a specified column from the table and returns the number of rows affected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified column doesn't exist.
+    ///
+    /// # Returns
+    ///
+    /// The number of rows that were modified by removing the column.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let rows_affected = sheet.drop_col("id") // Removes the "id" column and returns 5
+    /// ```
+    pub fn drop_col(&mut self, column: &str) -> i32 {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
+        let mut rows_affected = 0;
         for i in 0..self.data.len() {
             self.data[i].remove(col_index);
+            rows_affected += 1;
         }
+
+        rows_affected
     }
 
-    /// Mean is usually represented by x-bar or x̄.
+    /// Calculates the mean (average) of a specified column.
     ///
-    /// X̄ = (Sum of values ÷ Number of values in data set)
+    /// The mean is the sum of all values in a data set divided by the number of values.
+    ///
+    /// # Formula
+    ///
+    /// X̄ = (ΣX) / N
+    ///
+    /// Where:
+    /// - X̄ is the mean
+    /// - ΣX is the sum of all values in the column
+    /// - N is the number of values in the column
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-numeric values (i.e., not `i64` or `f64`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let re_mean = sheet.mean("release year")?; // Returns the mean of the "Age" column
+    /// ```
+    ///
+    /// # Returns
+    ///
+    /// The mean of the specified column as an `f64`, or an error if one occurs.
     pub fn mean(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut sum = 0_f64;
@@ -299,10 +531,39 @@ impl Sheet {
         Ok(sum / ((self.data.len() - 1) as f64))
     }
 
-    /// The formula to find the variance is given by:
-    /// Var (X) = E[( X – μ)²] Where Var (X) is the variance
-    /// E denotes the expected value
-    /// X is the random variable and μ is the mean
+    /// Calculates the variance of a specified column.
+    ///
+    /// Variance measures how far a set of numbers are spread out from their average value.
+    /// It is calculated as the average of the squared differences from the mean.
+    ///
+    /// # Formula
+    ///
+    /// Var(X) = E[(X - μ)²]
+    ///
+    /// Where:
+    /// - Var(X) is the variance
+    /// - E denotes the expected value (average)
+    /// - X is the random variable (the values in the column)
+    /// - μ is the mean of X
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-numeric values (i.e., not `i64` or `f64`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let re_variance = sheet.variance("release year")?; // Returns the variance of the "release year" column
+    /// ```
+    ///
+    /// # Returns
+    ///
+    /// The variance of the specified column as an `f64`, or an error if one occurs.
     pub fn variance(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let mean = self.mean(column)?;
 
@@ -324,7 +585,28 @@ impl Sheet {
         Ok(total_sum / (self.data.len() - 1) as f64)
     }
 
-    /// median calculates the value in the middle of the provided column
+    /// Calculates the median value of a specified column.
+    ///
+    /// The median is the value that separates the higher half of a data set from the lower half.
+    /// In this case, it's the value that falls in the middle of the column when the data is sorted.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column is absent for the middle row.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    /// let median_id = sheet.median("id")?; // Returns a &Int(3)
+    /// ```
+    /// # Returns
+    ///
+    /// A reference to the `Cell` containing the median value of the specified column.
     pub fn median(&self, column: &str) -> &Cell {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         let row_index = ((self.data.len() - 1) + 1) / 2;
@@ -334,50 +616,86 @@ impl Sheet {
             .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, row_index))
     }
 
-    /// mode get the most frequent item of a column
-    // TODO: also support Bimodal, Trimodal & Multimodal
-    pub fn mode(&self, column: &str) -> (Cell, i32) {
+    /// mode get the most frequent items of a column
+    ///
+    /// The function gets a vector of the most frequent items in a column, alongside their number of
+    /// occurences.
+    ///
+    /// # Arguments
+    ///
+    /// * `columnn` - the name of the column
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut sheet = Sheet::new_sheet();
+    /// sheet.load_data("test_data.csv").unwrap();
+    ///
+    /// let multimodal = sheet.mode("director");
+    /// println!("mode: {:?}", multimodal) // mode: [(String("quintin"), 2), (String("martin"), 2)]
+    ///```
+    pub fn mode(&self, column: &str) -> Vec<(Cell, i32)> {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
         let fq = self.build_frequency_table(col_index);
         let mut max = 0;
-        let mut max_index = 0_usize;
+        let mut multi_mode: Vec<(Cell, i32)> = Vec::new();
 
-        for (i, item) in fq.iter().enumerate() {
-            if max < item.1 {
+        for item in fq.iter() {
+            if max <= item.1 {
                 max = item.1;
-                max_index = i;
+                multi_mode.push(item.clone());
             }
         }
 
-        fq[max_index].clone()
+        multi_mode
     }
 
-    /// build_frequency_table gets the frequency of each elements in a column
+    /// Builds a frequency table for a specified column, counting the occurrences of each unique value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified column doesn't exist or is absent for a row.
+    ///
+    /// # Returns
+    ///
+    /// A vector of tuples `(Cell, i32)`, where:
+    /// - `Cell` is the unique value from the column.
+    /// - `i32` is the frequency (count) of that value in the column.
     fn build_frequency_table(&self, col_index: usize) -> Vec<(Cell, i32)> {
-        let mut frequency_table: Vec<(Cell, i32)> = Vec::new();
+        let mut fq: Vec<(Cell, i32)> = Vec::new();
 
         for i in 1..self.data.len() {
             let cell = self.data[i]
                 .get(col_index)
                 .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, i));
-            if frequency_table.is_empty() {
-                frequency_table.push((cell.clone(), 1));
+            if fq.is_empty() {
+                fq.push((cell.clone(), 1));
                 continue;
             }
 
-            let index = frequency_table.iter().position(|item| item.0 == *cell);
+            let index = fq.iter().position(|item| item.0 == *cell);
             if let Some(idx) = index {
-                frequency_table[idx].1 += 1;
+                fq[idx].1 += 1;
             } else if index.is_none() {
-                frequency_table.push((cell.clone(), 1));
+                fq.push((cell.clone(), 1));
             }
         }
 
-        frequency_table
+        fq
     }
 
-    /// max_int64 return the maximum value of a column of integer values.
-    /// if encountered with any type other than **Cell:Int(i64)** it exist an error.
+    /// Finds the maximum value of a specified column, specifically for `i64` values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-integer values (i.e., not `i64`).
+    ///
+    /// # Returns
+    ///
+    /// The maximum `i64` value in the specified column, or an error if one occurs.
     pub fn max_int64(&self, column: &str) -> Result<i64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut max = 0_i64;
@@ -399,8 +717,18 @@ impl Sheet {
         Ok(max)
     }
 
-    /// max_float64 return the maximum value of a column of float and integer values.
-    /// if encountered with any type other than **Cell:Float(f64)** or **Cell::Int(i64)** it exist an error.
+    /// Finds the maximum value of a specified column, working with both `f64` and `i64` values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-numeric values (i.e., not `f64` or `i64`).
+    ///
+    /// # Returns
+    ///
+    /// The maximum value in the specified column, either an `f64` or an `i64` cast to `f64`, or an error if one occurs.
     pub fn max_float64(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut max = 0_f64;
@@ -427,8 +755,18 @@ impl Sheet {
         Ok(max)
     }
 
-    /// min_int64 return the minimum value of a column of integer values.
-    /// if encountered with any type other than **Cell:Int(i64)** it exist an error.
+    /// Finds the minimum value of a specified column, specifically for `i64` values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-integer values (i.e., not `i64`).
+    ///
+    /// # Returns
+    ///
+    /// The minimum `i64` value in the specified column, or an error if one occurs.
     pub fn min_int64(&self, column: &str) -> Result<i64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut min = 0_i64;
@@ -455,8 +793,18 @@ impl Sheet {
         Ok(min)
     }
 
-    /// min_float64 return the minimum value of a column of float and integer values.
-    /// if encountered with any type other than **Cell:Float(f64)** or **Cell::Int(i64)** it exist an error
+    /// Finds the minimum value of a specified column, working with both `f64` and `i64` values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The specified column doesn't exist.
+    /// - The specified column contains non-numeric values (i.e., not `f64` or `i64`).
+    ///
+    /// # Returns
+    ///
+    /// The minimum value in the specified column, either an `f64` or an `i64` cast to `f64`, or an error if one occurs.
     pub fn min_float64(&self, column: &str) -> Result<f64, Box<dyn Error>> {
         let index = self.get_col_index(column).expect("column doesn't exist");
         let mut min = 0_f64;
@@ -488,7 +836,14 @@ impl Sheet {
         Ok(min)
     }
 
-    /// describe prints general infos about the sheet to the standard output in a formatted manner
+    /// Prints general information about the sheet to the standard output in a formatted manner.
+    ///
+    /// This includes:
+    ///
+    /// - The first 5 rows of the sheet.
+    /// - A separator line.
+    /// - The last 5 rows of the sheet.
+    /// - The total number of rows and columns
     pub fn describe(&self) {
         println!("[");
         for i in 0..5 {
@@ -517,7 +872,7 @@ impl Sheet {
                 Cell::Bool(b) => print!("{b},"),
                 Cell::Int(x) => print!("{x},"),
                 Cell::Float(f) => print!("{f},"),
-                Cell::Null => print!(" ,"),
+                Cell::Null => print!("NULL,"),
             });
             println!(")");
         }
@@ -530,7 +885,9 @@ impl Sheet {
         )
     }
 
-    /// pretty_print prints the sheet to the standard output in a formatted manner
+    /// Prints the entire sheet to the standard output in a formatted manner.
+    ///
+    /// Each row is enclosed in parentheses and separated by commas, providing a visual representation of the sheet's structure and content.
     pub fn pretty_print(&self) {
         println!("[");
         self.data.iter().for_each(|row| {
@@ -561,7 +918,16 @@ impl Sheet {
     }
 }
 
-/// parse_string takes a token string, parses it and returns in the form of a Cell
+/// Parses a string token into the appropriate Cell type.
+///
+/// # Behavior
+///
+/// - Returns `Cell::Bool(true)` for the token "true".
+/// - Returns `Cell::Bool(false)` for the token "false".
+/// - Returns `Cell::Int(i64)` if the token can be parsed as an integer.
+/// - Returns `Cell::Float(f64)` if the token can be parsed as a floating-point number.
+/// - Returns `Cell::Null` if the token is empty.
+/// - Returns `Cell::String(token.to_string())` for any other string value.
 fn parse_token(token: &str) -> Cell {
     if token == "true" {
         return Cell::Bool(true);

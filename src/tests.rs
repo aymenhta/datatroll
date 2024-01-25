@@ -88,9 +88,9 @@ fn test_mode() {
     let mut sheet = Sheet::new_sheet();
     sheet.load_data("freq_data.csv").unwrap();
 
-    let got = sheet.mode("director");
+    let got = &sheet.mode("director")[0];
     let want = (Cell::String("scorces".to_string()), 3);
-    assert_eq!(got, want)
+    assert_eq!(*got, want)
 }
 
 #[test]
@@ -263,7 +263,7 @@ fn test_fill_col() {
     sheet.load_data("titles.csv").unwrap();
 
     sheet.fill_col("id", Cell::Null).unwrap();
-    for row in sheet.paginate(1, 10) {
+    for row in sheet.paginate(1, 10).unwrap() {
         println!("{:?}", row[1]);
         assert_eq!(Cell::Null, row[0]);
     }
