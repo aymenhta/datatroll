@@ -26,12 +26,13 @@
 //!
 //! fn main() {
 //!     // Read data from a CSV file
-//!     let mut sheet = Sheet::new();
-//!     if let Err(err) = sheet.load_data("input.csv") {
-//!         eprintln!("Error loading data: {}", err);
-//!     } else {
-//!         println!("Data loaded successfully from input.csv");
-//!     }
+//!     let data = "id ,title , director, release date, review
+//!1, old, quintin, 2011, 3.5
+//!2, her, quintin, 2013, 4.2
+//!3, easy, scorces, 2005, 1.0
+//!4, hey, nolan, 1997, 4.7
+//!5, who, martin, 2017, 5.0";
+//!     let mut sheet = Sheet::load_data_from_str(data);
 //!
 //!     // drop all the rows in which the review is less than 4.0
 //!     sheet.drop_rows("review", |c| {
@@ -79,7 +80,7 @@ pub struct Sheet {
 
 impl Sheet {
     /// new_sheet initialize a Sheet
-    pub fn new_sheet() -> Self {
+    fn new_sheet() -> Self {
         Self {
             data: Vec::<Vec<Cell>>::new(),
         }
@@ -103,15 +104,16 @@ impl Sheet {
     /// # Examples
     ///
     /// ```rust
-    /// let mut sheet = Sheet::default();
+    /// use datatroll::Sheet;
     ///
-    /// if let Err(err) = sheet.load_data("input.csv") {
+    /// if let Err(err) = Sheet::load_data("input.csv") {
     ///     eprintln!("Error loading data: {}", err);
     /// } else {
     ///     println!("Data loaded successfully from input.csv");
     /// }
     /// ```
-    pub fn load_data(&mut self, file_path: &str) -> Result<(), Box<dyn Error>> {
+    pub fn load_data(file_path: &str) -> Result<Self, Box<dyn Error>> {
+        let mut sheet = Self::new_sheet();
         // check for ext
         if file_path.split('.').last() != Some("csv") {
             return Err(Box::from(
@@ -121,27 +123,49 @@ impl Sheet {
 
         let f = File::open(file_path)?;
         let mut reader = BufReader::new(f);
-        let mut content = String::new();
+        let mut data = String::new();
 
-        reader.read_to_string(&mut content)?;
+        reader.read_to_string(&mut data)?;
 
-        content.lines().for_each(|line| {
+        data.lines().for_each(|line| {
             let row: Vec<Cell> = line.split(',').map(|s| s.trim()).map(parse_token).collect();
-            self.data.push(row);
+            sheet.data.push(row);
         });
 
         // if some column values are absent from a row, then fill it with a default Cell::Null
-        let col_len = self.data[0].len();
-        for i in 1..self.data.len() {
-            let row_len = self.data[i].len();
+        let col_len = sheet.data[0].len();
+        for i in 1..sheet.data.len() {
+            let row_len = sheet.data[i].len();
             if row_len < col_len {
                 for _ in 0..col_len - row_len {
-                    self.data[i].push(Cell::Null);
+                    sheet.data[i].push(Cell::Null);
                 }
             }
         }
 
-        Ok(())
+        Ok(sheet)
+    }
+
+    pub fn load_data_from_str(data: &str) -> Self {
+        let mut sheet = Self::new_sheet();
+
+        data.lines().for_each(|line| {
+            let row: Vec<Cell> = line.split(',').map(|s| s.trim()).map(parse_token).collect();
+            sheet.data.push(row);
+        });
+
+        // if some column values are absent from a row, then fill it with a default Cell::Null
+        let col_len = sheet.data[0].len();
+        for i in 1..sheet.data.len() {
+            let row_len = sheet.data[i].len();
+            if row_len < col_len {
+                for _ in 0..col_len - row_len {
+                    sheet.data[i].push(Cell::Null);
+                }
+            }
+        }
+
+        sheet
     }
 
     /// Exports the content of a Sheet to a CSV file.
@@ -323,7 +347,7 @@ impl Sheet {
                 "page should more than or equal 1, size should 50 per page at max",
             ));
         }
-        if page > (self.data.len() / size) {
+        if self.data.len() < size {
             return Err(Box::from("page unavailabe"));
         }
 
@@ -396,7 +420,7 @@ impl Sheet {
     /// ```rust
     /// let mut sheet = Sheet::new_sheet();
     /// sheet.load_data("test_data.csv").unwrap();
-    /// let matching_rows = sheet.find_rows("Age", |cell| cell.as_int() >= 30);
+    /// let matching_rows = sheet.filter("Age", |cell| cell.as_int() >= 30);
     /// ```
     ///
     /// # Generics
@@ -407,7 +431,7 @@ impl Sheet {
     /// # Returns
     ///
     /// A vector of vectors, where each inner vector represents a row that matches the predicate.
-    pub fn find_rows<F>(&self, column: &str, predicate: F) -> Vec<Vec<Cell>>
+    pub fn filter<F>(&self, column: &str, predicate: F) -> Vec<Vec<Cell>>
     where
         F: FnOnce(&Cell) -> bool + Copy,
     {
@@ -424,6 +448,48 @@ impl Sheet {
         }
 
         res
+    }
+
+    /// The map function applies a given transformation to each column value of rows.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Result` indicating success or an error
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use datatroll::{Sheet, Cell};
+    ///
+    ///let data = "id ,title , director, release date, review
+    ///1, old, quintin, 2011, 3.5
+    ///2, her, quintin, 2013, 4.2
+    ///3, easy, scorces, 2005, 1.0
+    ///4, hey, nolan, 1997, 4.7
+    ///5, who, martin, 2017, 5.0";
+    ///
+    /// let mut sheet = Sheet::load_data_from_str(data);
+    ///
+    /// let result = sheet.map("title", |c| match c {
+    ///     Cell::String(s) => Cell::String(s.to_uppercase()),
+    ///     _ => return c,
+    /// });
+    /// 
+    /// assert!(result.is_ok());
+    /// ```
+    pub fn map<F>(&mut self, column: &str, transform: F) -> Result<(), String>
+    where
+        F: Fn(Cell) -> Cell,
+    {
+        match self.get_col_index(column) {
+            Some(i) => {
+                self.data
+                    .iter_mut()
+                    .for_each(|row| row[i] = transform(row[i].clone()));
+                Ok(())
+            }
+            None => Err(format!("could not find column '{column}'")),
+        }
     }
 
     /// Removes rows from the table based on a predicate applied to a specific column.

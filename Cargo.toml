@@ -1,13 +1,13 @@
 [package]
 name = "datatroll"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Aymen Hitta"]
 keywords = ["data", "csv"]
 categories = ["text-processing"]
 readme = "./README.md"
 license = "MIT"
-documentation = "https://docs.rs/datatroll/0.1.1"
+documentation = "https://docs.rs/datatroll/0.1.3"
 repository = "https://github.com/aymenhta/datatroll"
 homepage = "https://github.com/aymenhta/datatroll"
 description = "a robust and user-friendly Rust library for efficiently loading, manipulating, and exporting data stored in CSV files."
