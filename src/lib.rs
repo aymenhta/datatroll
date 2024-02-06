@@ -410,7 +410,7 @@ impl Sheet {
         None
     }
 
-    pub fn edit_row(
+    pub fn edit_cell(
         &mut self,
         column: &str,
         row_index: usize,

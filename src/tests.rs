@@ -1,5 +1,12 @@
 use super::{Cell, Sheet};
 
+const STR_DATA: &str = "id ,title , director, release date, review
+1, old, quintin, 2011, 3.5
+2, her, quintin, 2013, 4.2
+3, easy, scorces, 2005, 1.0
+4, hey, nolan, 1997, 4.7
+5, who, martin, 2017, 5.0";
+
 #[test]
 fn test_data_loading() {
     let sheet = Sheet::load_data("test_data.csv").unwrap();
@@ -61,40 +68,21 @@ fn test_data_loading_should_return_err() {
 
 #[test]
 fn test_mean() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(sheet.mean("review").unwrap(), 3.6799999999999997)
 }
 
 #[test]
 fn test_median() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(*sheet.median("release date"), Cell::Int(2005))
 }
 
 #[test]
 fn test_mode() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     let got = &sheet.mode("director")[0];
     let want = (Cell::String("quintin".to_string()), 2);
@@ -103,65 +91,35 @@ fn test_mode() {
 
 #[test]
 fn test_max_int64() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(sheet.max_int64("release date").unwrap(), 2017)
 }
 
 #[test]
 fn test_max_float64() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(sheet.max_float64("review").unwrap(), 5.0)
 }
 
 #[test]
 fn test_min_int64() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(sheet.min_int64("release date").unwrap(), 1997)
 }
 
 #[test]
 fn test_min_float64() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert_eq!(sheet.min_float64("review").unwrap(), 1.0)
 }
 
 #[test]
 fn test_insert() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let mut sheet = Sheet::load_data_from_str(data);
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
     sheet.insert_row("7, hello, quintin, 2007, 2.4").unwrap();
     let want = vec![
@@ -178,22 +136,11 @@ fn test_insert() {
 
 #[test]
 fn test_drop_rows() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
-    let mut sheet = Sheet::load_data_from_str(data);
-
-    sheet.drop_rows("review", |c| {
-        if let Cell::Float(r) = c {
-            if *r < 4.0 {
-                return true;
-            }
-        }
-        false
+    sheet.drop_rows("review", |c| match c {
+        Cell::Float(r) => *r < 4.0,
+        _ => false,
     });
 
     let want = vec![
@@ -234,14 +181,7 @@ fn test_drop_rows() {
 
 #[test]
 fn test_drop_col() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-
-    let mut sheet = Sheet::load_data_from_str(data);
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
     sheet.drop_col("review");
 
@@ -291,13 +231,7 @@ fn test_drop_col() {
 
 #[test]
 fn test_fill_col() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let mut sheet = Sheet::load_data_from_str(data);
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
     sheet.fill_col("id", Cell::Null).unwrap();
     for row in sheet.paginate(1, sheet.data.len() - 1).unwrap() {
@@ -308,13 +242,7 @@ fn test_fill_col() {
 
 #[test]
 fn test_variance() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     let got = sheet.variance("review").unwrap();
     let want = 2.0536000000000003;
@@ -323,13 +251,7 @@ fn test_variance() {
 
 #[test]
 fn test_map() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let mut sheet = Sheet::load_data_from_str(data);
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
     let _ = sheet.map("title", |c| match c {
         Cell::String(s) => Cell::String(s.to_uppercase()),
@@ -352,13 +274,7 @@ fn test_map() {
 
 #[test]
 fn test_map_fails_when_col_doesnot_exist() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let mut sheet = Sheet::load_data_from_str(data);
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
 
     assert!(sheet
         .map("overrated", |c| match c {
@@ -370,13 +286,7 @@ fn test_map_fails_when_col_doesnot_exist() {
 
 #[test]
 fn test_find_first_row() {
-    let data = "id ,title , director, release date, review
-1, old, quintin, 2011, 3.5
-2, her, quintin, 2013, 4.2
-3, easy, scorces, 2005, 1.0
-4, hey, nolan, 1997, 4.7
-5, who, martin, 2017, 5.0";
-    let sheet = Sheet::load_data_from_str(data);
+    let sheet = Sheet::load_data_from_str(STR_DATA);
 
     let got = sheet.find_first_row("review", |c| {
         if let Cell::Float(r) = c {
@@ -400,62 +310,25 @@ fn test_find_first_row() {
     assert!(got2.is_none());
 }
 
+#[test]
+fn test_edit_cell() {
+    let mut sheet = Sheet::load_data_from_str(STR_DATA);
+
+    let (_, i) = sheet
+        .find_first_row("release date", |c| match c {
+            Cell::Int(i) => *i == 2013,
+            _ => false,
+        })
+        .unwrap();
+
+    sheet.edit_cell("release date", i, Cell::Int(2022)).unwrap();
+    assert_eq!(sheet.data[i][3], Cell::Int(2022));
+}
+
 fn assert_sheet_row(got: &Vec<Cell>, want: &Vec<Cell>) {
     assert_eq!(got.len(), want.len());
 
-    let id = match got[0] {
-        Cell::Int(i) => i,
-        _ => 0,
-    };
-
-    let title = match &got[1] {
-        Cell::String(s) => s,
-        _ => "",
-    };
-
-    let director = match &got[2] {
-        Cell::String(s) => s,
-        _ => "",
-    };
-
-    let release_date = match got[0] {
-        Cell::Int(i) => i,
-        _ => 0,
-    };
-
-    let review = match got[0] {
-        Cell::Float(f) => f,
-        _ => 0_f64,
-    };
-
-    let want_id = match want[0] {
-        Cell::Int(i) => i,
-        _ => 0,
-    };
-
-    let want_title = match &want[1] {
-        Cell::String(s) => s,
-        _ => "",
-    };
-
-    let want_director = match &want[2] {
-        Cell::String(s) => s,
-        _ => "",
-    };
-
-    let want_release_date = match want[0] {
-        Cell::Int(i) => i,
-        _ => 0,
-    };
-
-    let want_review = match want[0] {
-        Cell::Float(f) => f,
-        _ => 0_f64,
-    };
-
-    assert_eq!(id, want_id);
-    assert_eq!(title, want_title);
-    assert_eq!(director, want_director);
-    assert_eq!(release_date, want_release_date);
-    assert_eq!(review, want_review);
+    for i in 0..got.len() {
+        assert_eq!(got[i], want[i])
+    }
 }
