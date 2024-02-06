@@ -27,7 +27,7 @@ datatroll is a robust and user-friendly Rust library for efficiently loading, ma
 Add rust-csv-wrangler to your project with Cargo:
 ```toml
 [dependencies]
-datatroll = "0.1.0"
+datatroll = "0.1.3"
 ```
 Import the library and start wrangling your data:
 

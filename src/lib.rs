@@ -391,7 +391,8 @@ impl Sheet {
     /// An `Option<&Vec<Cell>>`:
     /// - `Some(&row)` if a matching row is found, where `row` is a reference to the first matching row.
     /// - `None` if no matching row is found.
-    pub fn find_first_row<F>(&self, column: &str, predicate: F) -> Option<&Vec<Cell>>
+    // TODO: make it return a tuple of the first row alognside its index (to help with mutzting the value)
+    pub fn find_first_row<F>(&self, column: &str, predicate: F) -> Option<(Vec<Cell>, usize)>
     where
         F: FnOnce(&Cell) -> bool + Copy,
     {
@@ -402,11 +403,26 @@ impl Sheet {
                 .get(col_index)
                 .unwrap_or_else(|| panic!("column '{}' is absent for row '{}'", col_index, i));
             if predicate(cell) {
-                return Some(&self.data[i]);
+                return Some((self.data[i].clone(), i));
             }
         }
 
         None
+    }
+
+    pub fn edit_row(
+        &mut self,
+        column: &str,
+        row_index: usize,
+        new_value: Cell,
+    ) -> Result<(), String> {
+        match self.get_col_index(column) {
+            Some(i) => {
+                self.data[row_index][i] = new_value.clone();
+                Ok(())
+            }
+            None => Err(format!("could not find column '{column}'")),
+        }
     }
 
     /// Finds rows in the table that match a predicate applied to a specific column.
@@ -474,7 +490,7 @@ impl Sheet {
     ///     Cell::String(s) => Cell::String(s.to_uppercase()),
     ///     _ => return c,
     /// });
-    /// 
+    ///
     /// assert!(result.is_ok());
     /// ```
     pub fn map<F>(&mut self, column: &str, transform: F) -> Result<(), String>
