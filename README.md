@@ -35,7 +35,7 @@ Import the library and start wrangling your data:
 use datatroll::{Cell, Sheet};
 
 fn main() {
-    // Read data from a CSV file
+    // 1. Read data from a CSV file
     let mut sheet = Sheet::new();
     if let Err(err) = sheet.load_data("input.csv") {
         eprintln!("Error loading data: {}", err);
@@ -61,5 +61,16 @@ fn main() {
     } else {
         println!("Data exported successfully to output.csv");
     }
+
+    // 2. Read data from strings
+    let data = "id ,title , director, release date, review
+1, old, quintin, 2011, 3.5
+2, her, quintin, 2013, 4.2
+3, easy, scorces, 2005, 1.0
+4, hey, nolan, 1997, 4.7
+5, who, martin, 2017, 5.0";
+    
+    let sheet = Sheet::load_data_from_str(data);
+    sheet.pretty_print();
 }
 ```
