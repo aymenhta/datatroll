@@ -56,9 +56,11 @@
 //! ```
 
 use std::{
+    iter,
     error::Error,
+    fmt::Display,
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Read, Write},
+    io::{BufReader, BufWriter, Read, Write}, ops,
 };
 
 /// Represents different types of data that can be stored in a cell.
@@ -71,18 +73,91 @@ pub enum Cell {
     Float(f64),
 }
 
+impl Display for Cell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Cell::Null => write!(f, ""),
+            Cell::String(s) => write!(f, "{}", s),
+            Cell::Bool(b) => write!(f, "{}", b),
+            Cell::Int(i) => write!(f, "{}", i),
+            Cell::Float(x) => write!(f, "{}", x),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Row(Vec<Cell>);
+
+impl Display for Row {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let items: Vec<String> = self
+            .iter()
+            .map(|x| match x {
+                Cell::Null => String::new(),
+                Cell::String(s) => s.clone(),
+                Cell::Bool(b) => b.to_string(),
+                Cell::Int(i) => i.to_string(),
+                Cell::Float(x) => x.to_string(),
+            })
+            .collect();
+
+
+        write!(f, "[{}]", items.join(","))
+    }
+}
+
+impl ops::Deref for Row {
+    type Target = Vec<Cell>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for Row {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl iter::FromIterator<Cell> for Row {
+    fn from_iter<I: IntoIterator<Item = Cell>>(iter: I) -> Self {
+        Row(iter.into_iter().collect())
+    }
+}
+
+// Implement IntoIterator for Row
+impl IntoIterator for Row {
+    type Item = Cell;
+    type IntoIter = std::vec::IntoIter<Cell>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+// Implement IntoIterator for &Row
+impl<'a> IntoIterator for &'a Row {
+    type Item = &'a Cell;
+    type IntoIter = std::slice::Iter<'a, Cell>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 /// Represents a 2D vector of cells, forming a sheet of data.
 #[derive(Debug, Default)]
 pub struct Sheet {
     /// 2D vector of cells
-    pub data: Vec<Vec<Cell>>,
+    pub data: Vec<Row>,
 }
 
 impl Sheet {
     /// new_sheet initialize a Sheet
     fn new_sheet() -> Self {
         Self {
-            data: Vec::<Vec<Cell>>::new(),
+            data: Vec::<Row>::new(),
         }
     }
 
@@ -128,20 +203,12 @@ impl Sheet {
         reader.read_to_string(&mut data)?;
 
         data.lines().for_each(|line| {
-            let row: Vec<Cell> = line.split(',').map(|s| s.trim()).map(parse_token).collect();
+            let row: Row = line.split(',').map(|s| s.trim()).map(parse_token).collect();
             sheet.data.push(row);
         });
 
         // if some column values are absent from a row, then fill it with a default Cell::Null
-        let col_len = sheet.data[0].len();
-        for i in 1..sheet.data.len() {
-            let row_len = sheet.data[i].len();
-            if row_len < col_len {
-                for _ in 0..col_len - row_len {
-                    sheet.data[i].push(Cell::Null);
-                }
-            }
-        }
+        sheet.normalize_cols();
 
         Ok(sheet)
     }
@@ -150,22 +217,26 @@ impl Sheet {
         let mut sheet = Self::new_sheet();
 
         data.lines().for_each(|line| {
-            let row: Vec<Cell> = line.split(',').map(|s| s.trim()).map(parse_token).collect();
+            let row: Row = line.split(',').map(|s| s.trim()).map(parse_token).collect();
             sheet.data.push(row);
         });
 
         // if some column values are absent from a row, then fill it with a default Cell::Null
-        let col_len = sheet.data[0].len();
-        for i in 1..sheet.data.len() {
-            let row_len = sheet.data[i].len();
+        sheet.normalize_cols();
+
+        sheet
+    }
+
+    fn normalize_cols(&mut self) {
+        let col_len = self.data[0].len();
+        for i in 1..self.data.len() {
+            let row_len = self.data[i].len();
             if row_len < col_len {
                 for _ in 0..col_len - row_len {
-                    sheet.data[i].push(Cell::Null);
+                    self.data[i].push(Cell::Null);
                 }
             }
         }
-
-        sheet
     }
 
     /// Exports the content of a Sheet to a CSV file.
@@ -257,7 +328,7 @@ impl Sheet {
     /// assert_eq!(sheet[1], vec![Cell::Null, Cell::Float(3.14), Cell::String("World".to_string()]);
     /// ```
     pub fn insert_row(&mut self, input: &str) -> Result<(), Box<dyn Error>> {
-        let row: Vec<Cell> = input
+        let row: Row = input
             .split(',')
             .map(|s| s.trim())
             .map(parse_token)
@@ -341,7 +412,7 @@ impl Sheet {
     /// assert_eq!(page[0][0], Cell::String("Hello, Rust!".to_string()));
     /// assert_eq!(page[1][0], Cell::String("Hello, World!".to_string()));
     /// ```
-    pub fn paginate(&self, page: usize, size: usize) -> Result<Vec<Vec<Cell>>, Box<dyn Error>> {
+    pub fn paginate(&self, page: usize, size: usize) -> Result<Vec<Row>, Box<dyn Error>> {
         if page < 1 || size > 50 {
             return Err(Box::from(
                 "page should more than or equal 1, size should 50 per page at max",
@@ -351,7 +422,7 @@ impl Sheet {
             return Err(Box::from("page unavailabe"));
         }
 
-        let mut res: Vec<Vec<Cell>> = Default::default();
+        let mut res: Vec<Row> = Default::default();
         let offset = ((page - 1) * size) + 1;
 
         for i in offset..(offset + size) {
@@ -388,11 +459,10 @@ impl Sheet {
     ///
     /// # Returns
     ///
-    /// An `Option<&Vec<Cell>>`:
+    /// An `Option<&Row>`:
     /// - `Some(&row)` if a matching row is found, where `row` is a reference to the first matching row.
     /// - `None` if no matching row is found.
-    // TODO: make it return a tuple of the first row alognside its index (to help with mutzting the value)
-    pub fn find_first_row<F>(&self, column: &str, predicate: F) -> Option<(Vec<Cell>, usize)>
+    pub fn find_first_row<F>(&self, column: &str, predicate: F) -> Option<(Row, usize)>
     where
         F: FnOnce(&Cell) -> bool + Copy,
     {
@@ -447,12 +517,12 @@ impl Sheet {
     /// # Returns
     ///
     /// A vector of vectors, where each inner vector represents a row that matches the predicate.
-    pub fn filter<F>(&self, column: &str, predicate: F) -> Vec<Vec<Cell>>
+    pub fn filter<F>(&self, column: &str, predicate: F) -> Vec<Row>
     where
         F: FnOnce(&Cell) -> bool + Copy,
     {
         let col_index = self.get_col_index(column).expect("column doesn't exist");
-        let mut res: Vec<Vec<Cell>> = Default::default();
+        let mut res: Vec<Row> = Default::default();
 
         for i in 1..self.data.len() {
             let cell = self.data[i]

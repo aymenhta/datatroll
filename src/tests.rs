@@ -288,22 +288,14 @@ fn test_map_fails_when_col_doesnot_exist() {
 fn test_find_first_row() {
     let sheet = Sheet::load_data_from_str(STR_DATA);
 
-    let got = sheet.find_first_row("review", |c| {
-        if let Cell::Float(r) = c {
-            if *r > 4.0 {
-                return true;
-            }
-        }
-        false
+    let got = sheet.find_first_row("review", |c| match c {
+        Cell::Float(r) => *r > 4.0,
+        _ => false,
     });
 
-    let got2 = sheet.find_first_row("id", |c| {
-        if let Cell::Int(i) = c {
-            if *i > 10 {
-                return true;
-            }
-        }
-        false
+    let got2 = sheet.find_first_row("id", |c| match c {
+        Cell::Int(i) => *i > 10,
+        _ => false,
     });
 
     assert!(got.is_some());
