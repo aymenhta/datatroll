@@ -1,21 +1,21 @@
 ## datatroll: Powerfully Wrangle Your CSV Data in Rust
-datatroll is a robust and user-friendly Rust library for efficiently loading, manipulating, and exporting data stored in CSV files. Say goodbye to tedious hand-coding data parsing and welcome a streamlined workflow for wrangling your data with ease.
+datatroll is a robust and user-friendly Rust library for efficiently loading, manipulating, and exporting data stored in CSV files.
 
 ### Features:
-- **Versatile Data Loading:**
+- **Data Loading:**
   - Read data from CSV files with configurable separators and headers.
   - Specify data types for each column, ensuring type safety and efficient processing.
   - Handle missing values with graceful error handling.
-- **Intuitive Data Manipulation:**
+- **Data Manipulation:**
     - Insert new rows with custom values into your data.
     - Drop unwanted rows or columns to focus on relevant data.
     - Leverage powerful aggregations to calculate:
         - Mean, max, min, and median of numeric columns.
         - Mode (most frequent value) of categorical columns.
         - Variance of numeric columns.
-    - Apply custom transformations to specific columns using lambda functions.
-    - Supports Pagination
-- **Seamless Data Export:**
+    - Apply custom transformations to specific columns.
+    - Supports Pagination.
+- **Data Export:**
     - Write manipulated data back to a new CSV file, retaining original format or specifying your own.
     - Customize output with options like separator selection and header inclusion.
 ### Benefits:
@@ -24,12 +24,12 @@ datatroll is a robust and user-friendly Rust library for efficiently loading, ma
 - **Boost Productivity:** Get more done with faster data loading, manipulation, and export.
 - **Write Concise Code:** Enjoy an intuitive API for concise and expressive data wrangling tasks.
 ### Getting Started:
-Add rust-csv-wrangler to your project with Cargo:
+Add datatroll to your project with Cargo:
 ```toml
 [dependencies]
 datatroll = "0.1.3"
 ```
-Import the library and start wrangling your data:
+Import the library:
 
 ```rust
 use datatroll::{Cell, Sheet};
